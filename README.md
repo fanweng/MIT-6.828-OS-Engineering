@@ -9,3 +9,11 @@ I am attending the MIT 6.828 Operating System Engineering course online. This re
 ## Lectures
 
 ## Labs
+
+### Tools Guide
+
+[MIT 6.828 Lab Tools Guide](https://pdos.csail.mit.edu/6.828/2018/labguide.html)
+
+## Reading Materials
+
+[MIT 6.828 Reference Page](https://pdos.csail.mit.edu/6.828/2018/reference.html)
