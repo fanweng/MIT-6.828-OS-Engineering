@@ -38,6 +38,10 @@ $ brew install i386-jos-elf-gcc i386-jos-elf-gdb
 
 Or, we can build our own compiler toolchain by following the [tool page](https://pdos.csail.mit.edu/6.828/2018/tools.html).
 
+
+
+
+
 ## 1. PC Bootstrap
 
 The purpose of the first exercise is to introduce the x86 assembly language and PC bootstrap process. Also, it gets us familiar with QEMU and GDB debugging.
@@ -77,3 +81,92 @@ Special kernel symbols:
   end    f0119940 (virt)  00119940 (phys)
 Kernel executable memory footprint: 103KB
 ```
+
+### PC's Address Space
+
+```
++------------------+  <- 0xFFFFFFFF (4GB)
+|      32-bit      |
+|  memory mapped   |
+|     devices      |
+|                  |
+/\/\/\/\/\/\/\/\/\/\
+/\/\/\/\/\/\/\/\/\/\
+|                  |
+|      Unused      |
+|                  |
++------------------+  <- depends on amount of RAM
+|                  |
+| Extended Memory  |
+|                  |
++------------------+  <- 0x00100000 (1MB)
+|     BIOS ROM     |
++------------------+  <- 0x000F0000 (960KB)
+|  16-bit devices, |
+|  expansion ROMs  |
++------------------+  <- 0x000C0000 (768KB)
+|   VGA Display    |
++------------------+  <- 0x000A0000 (640KB)
+|                  |
+|    Low Memory    |
+|                  |
++------------------+  <- 0x00000000
+```
+
+#### 0x00000000 ~ 0x0009FFFF (640KB): Low Memory
+
+#### 0x000A0000 ~ 0x000FFFFF (384KB): Reserved by Hardware
+
+For special usages, such as video display buffers, firmware held in non-volatile memory. The most important part of this reserved area is the Basic Input/Output System (BIOS). BIOS occupied 64KB region from 0x000F0000 to 0x000FFFFF, which is responsible for performing basice system initialization and loading the OS from some appropriate location.
+
+#### 0x00100000 ~ RAM Size: Extended Memory
+
+Modern PCs supports 4GB physical address spaces or more but nevertheless preserved the early PCs' layout of low 1MB in order to ensure backward compatibility with existing software. Therefore, a "hole" from 0x000A0000 to 0x000FFFFF divides the RAM into *low memory* and *extended memory*.
+
+### ROM BIOS
+
+#### Functions
+- Set up interrupt descriptor table
+- Initialize the VGA disaply, PCI bus and all important devices that BIOS knows
+- Search the bootable device, read and transfer control to the boot loader
+
+#### The very first instruction
+
+Open one terminal and start the QEMU with GDB. QEMU stops before the processor executes the first instruction and waits for a debugging connection from GDB.
+```sh
+$ make qemu-nox-gdb
+***
+*** Now run 'make gdb'.
+***
+qemu-system-i386 -nographic -drive file=obj/kern/kernel.img,index=0,media=disk,format=raw -serial mon:stdio -gdb tcp::25501 -D qemu.log  -S
+```
+
+Course provides the `.gdbinit` that sets up GDB to debug the 16-bit code used during early boot and directed it to attach to the listening QEMU. Open another terminal and run GDB. But I got the following error.
+```sh
+$ make gdb
+gdb -n -x .gdbinit
+make: gdb: No such file or directory
+make: *** [gdb] Error 1
+```
+
+It is because the GDB installed in the *Section 0. Software Setup* is `i386-jos-elf-gdb` under `/usr/local/bin`. Therefore, run GDB like this.
+```sh
+$ i386-jos-elf-gdb
+GNU gdb (GDB) 7.3.1
+This GDB was configured as "--host=x86_64-apple-darwin19.6.0 --target=i386-jos-elf".
++ target remote localhost:25501
+The target architecture is assumed to be i8086
+[f000:fff0]    0xffff0:	ljmp   $0xf000,$0xe05b
+0x0000fff0 in ?? ()
++ symbol-file obj/kern/kernel
+```
+
+The line to be executed describes: now at physical address `0xffff0` (top of the BIOS ROM), the instruction to execute is `ljmp`, jumping to the Code Segment (CS) `0xf000` and Instruction Pointer (IP) `0xe05b`.
+
+Real mode addressing [CS:IP] could be translated to a physical address by the formula: *physical address = 16 * segment(CS) + offset(IP)*. For example, `16 * 0xf000 + 0xfff0 = 0xffff0`.
+
+
+
+
+
+## 2. Boot Loader
