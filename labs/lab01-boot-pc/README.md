@@ -170,3 +170,55 @@ Real mode addressing [CS:IP] could be translated to a physical address by the fo
 
 
 ## 2. Boot Loader
+
+### Boot loader procedure
+
+Hard disks for PC are divided into *512 byte* region called *sectors*. A *sector* is the hard disk's minimum granularity: each read/write operation must be one or more sectors in size and aligned on a sector boundary. If a disk is bootable, the first sector is called boot sector where the boot loader code resides.
+
+BIOS finds the hard disk and loads the boot sector into memory at physical address `0x7c00`, then `jmp` to CS:IP `0000:7c00`, passing control to the boot loader.
+
+The boot loader source files are *boot/boot.S* and *boot/main.c*. The disassembly of the boot loader after compilation is *obj/boot/boot.asm*, in which it tells the code layout in physical memory. Boot loader performs two main tasks:
+1. Switch from real mode to 32-bit protected mode so that software can access memory above 1MB. It's described in the Section 1.2.7 and 1.2.8 of [PC Assembly Language](../../resources/pc-asm-book.pdf). Now the physical address translation of [CS:IP] will be 32 bits instead of 16.
+2. Read kernel from the hard disk by directly accessing the IDE disk device registers via x86's special I/O instructions.
+
+#### Exercise 3
+
+1. At what point does the processor start executing 32-bit code? What exactly causes the switch from 16- to 32-bit mode?
+
+`ljmp   $PROT_MODE_CSEG, $protcse` in the *boot/boot.S*.
+
+2. What is the last instruction of the boot loader executed?
+
+`((void (*)(void)) (ELFHDR->e_entry))()` in C or `7d63:	ff 15 18 00 01 00    	call   *0x10018` in disassembly as shown in the *obj/boot/boot.asm*.
+
+3. Where is the first instruction of the kernel?
+
+Set a break point at the last boot loader instruction and continue to that instruction. Step one instruction further and we reach the first kernel instruction `0x10000c:	movw   $0x1234,0x472`.
+
+```
+(gdb) b *0x7d63
+(gdb) c
+Continuing.
+The target architecture is assumed to be i386
+=> 0x7d63:	call   *0x10018
+Breakpoint 1, 0x00007d63 in ?? ()
+(gdb) si
+=> 0x10000c:	movw   $0x1234,0x472
+0x0010000c in ?? ()
+(gdb) x/2i
+   0x100015:	mov    $0x117000,%eax
+   0x10001a:	mov    %eax,%cr3
+```
+
+4. How does the boot loader decide how many sectors it must read in order to fetch the entire kernel from disk? Where does it find this information?
+
+Boot loader gets the **program header table** and **number of entries** from ELF header `ELFHDR + ELFHDR->e_phoff` and `ELFHDR->e_phnum` respectively.
+
+```c
+ph = (struct Proghdr *) ((uint8_t *) ELFHDR + ELFHDR->e_phoff);
+eph = ph + ELFHDR->e_phnum;
+for (; ph < eph; ph++)
+	readseg(ph->p_pa, ph->p_memsz, ph->p_offset);
+```
+
+### Loading the kernel
