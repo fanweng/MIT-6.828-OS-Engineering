@@ -222,3 +222,57 @@ for (; ph < eph; ph++)
 ```
 
 ### Loading the kernel
+
+The C source file (.c) is compiled into an object file (.o) containing assembly instructions encoded in the binary format. The object files are combined into a single binary in the ELF format, which stands for *Executable and Linkable Format*. Full information of ELF format is available in the [ELF Specification](../../resources/elf-spec.pdf). The [Wiki Page](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) has a short description.
+
+The ELF binary starts with a fixed-length *ELF header* (*inc/elf.h*), followed by a variable-length *program header* listing each of the program sections to be loaded.
+
+```
+$ i386-jos-elf-objdump -x obj/boot/boot.out
+
+obj/boot/boot.out:     file format elf32-i386
+obj/boot/boot.out
+architecture: i386, flags 0x00000012:
+EXEC_P, HAS_SYMS
+start address 0x00007c00
+
+Program Header:
+    LOAD off    0x00000054 vaddr 0x00007c00 paddr 0x00007c00 align 2**2
+         filesz 0x0000024c memsz 0x0000024c flags rwx
+
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .text         0000017e  00007c00  00007c00  00000054  2**2
+                  CONTENTS, ALLOC, LOAD, CODE
+  1 .eh_frame     000000cc  00007d80  00007d80  000001d4  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  2 .stab         000006d8  00000000  00000000  000002a0  2**2
+                  CONTENTS, READONLY, DEBUGGING
+  3 .stabstr      000007df  00000000  00000000  00000978  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  4 .comment      00000011  00000000  00000000  00001157  2**0
+                  CONTENTS, READONLY
+SYMBOL TABLE:
+00007c00 l    d  .text	00000000 .text
+00007d80 l    d  .eh_frame	00000000 .eh_frame
+... ...
+```
+
+“VMA" (link address) of a section is the memory address form which the section expects to execute. "LMA" (load address) is the address at which that section should be loaded into memory. We find the `VMA=LMA=0x7c00`, so that BIOS loads the boot into memory starting at `0x7c00` and boot executes from that address, too. This is verified in the beiginning of the Section 2. The correct link address is set in the generated code by passing `-Ttext 0x7c00` to the linker in the *boot/Makefrag*.
+
+One field in the ELF header is also important, `e_entry` (*inc/elf.h*). It holds the link address of the *entry point* in the program, where the program should begin executing. Look at the Exercise 3.3, the boot load jumps to the `0x10000c` kernel's entry point.
+
+```
+$ i386-jos-elf-objdump -f obj/kern/kernel
+
+obj/kern/kernel:     file format elf32-i386
+architecture: i386, flags 0x00000112:
+EXEC_P, HAS_SYMS, D_PAGED
+start address 0x0010000c
+```
+
+
+
+
+
+## 3. Kernel
