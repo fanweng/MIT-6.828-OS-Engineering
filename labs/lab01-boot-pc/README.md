@@ -276,3 +276,69 @@ start address 0x0010000c
 
 
 ## 3. Kernel
+
+### Using virtual memory to work around position dependence
+
+Unlike boot load, the link address and load address are different for kernel. OS kernel often like to be linked and run at high *virtual address (VA)*, e.g. `0xf0100000`, in order to leave the lower part of processor's VA space for user programs to use.
+
+But many machines don't have any physical memory at that high address. So memory management unit (MMU) is employed to map virtual address `0xf0100000` (VMA) to physical address `0x00100000` (LMA).
+
+```
+$ i386-jos-elf-objdump -h obj/kern/kernel
+
+obj/kern/kernel:     file format elf32-i386
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .text         0000178e  f0100000  00100000  00001000  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+```
+
+For now, we just map the first 4MB of physical memory by using the statically-initialized page directory and page table in *kern/entrypgdir.c*. Once the `CR0_PG` is set in the *kern/entry.S*, memory references are VAs. Before that, they are physical addresses. `entry_pgdir` in the *kern/entrypgdir.c* translates the VA in the ranges of [0x00000000, 0x00400000] and [0xf0000000, 0xf0400000] to physical address [0x00000000, 0x00400000]. Access to the VA not in the two ranges will cause a hardware exception.
+
+#### Exercise 7
+
+1. Use QEMU and GDB to trace into the JOS kernel and stop at the `movl %eax, %cr0`. Examine memory at `0x00100000` and at `0xf0100000`. Now, single step over that instruction and examine memory at `0x00100000` and at `0xf0100000` again.
+
+From *obj/kern/kernel.asm* we know that instruction should be placed at `0x00100025` before the VA is turned on. So set the breakpoint to that address.
+
+```
+(gdb) b *0x100025
+Breakpoint 1 at 0x100025
+(gdb) c
+Continuing.
+The target architecture is assumed to be i386
+=> 0x100025:	mov    %eax,%cr0
+Breakpoint 1, 0x00100025 in ?? ()
+(gdb) x/8w 0xf0100000
+0xf0100000:	0x00000000	0x00000000	0x00000000	0x00000000
+0xf0100010:	0x00000000	0x00000000	0x00000000	0x00000000
+(gdb) x/8w 0x00100000
+0x100000:	0x1badb002	0x00000000	0xe4524ffe	0x7205c766
+0x100010:	0x34000004	0x7000b812	0x220f0011	0xc0200fd8
+
+(gdb) si
+=> 0x100028:	mov    $0xf010002f,%eax
+0x00100028 in ?? ()
+(gdb) x/8w 0xf0100000
+0xf0100000:	0x1badb002	0x00000000	0xe4524ffe	0x7205c766
+0xf0100010:	0x34000004	0x7000b812	0x220f0011	0xc0200fd8
+(gdb) x/8w 0x00100000
+0x100000:	0x1badb002	0x00000000	0xe4524ffe	0x7205c766
+0x100010:	0x34000004	0x7000b812	0x220f0011	0xc0200fd8
+```
+
+2. What is the first instruction after the new mapping is established that would fail to work properly if the mapping weren't in place?
+
+The first instruction would fail is `jmp *%eax` because that VA is out of boundary if mapping weren't in place.
+
+```
+### obj/kern/kernel.asm ###
+# Now paging is enabled, but we're still running at a low EIP
+# Jump up above KERNBASE before entering C code.
+	mov	$relocated, %eax
+f0100028:	b8 2f 00 10 f0       	mov    $0xf010002f,%eax
+	jmp	*%eax
+f010002d:	ff e0                	jmp    *%ea
+```
+
+### Formatted printing to the console
