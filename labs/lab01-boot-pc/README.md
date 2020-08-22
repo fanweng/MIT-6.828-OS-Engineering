@@ -433,3 +433,16 @@ vcprintf (fmt=0xf0101812 "x=%d y=%d z=%d\n", ap=0xf0116fe4 "\003")
 6. Let's say that GCC changed its calling convention so that it pushed arguments on the stack in declaration order, so that the last argument is pushed last. How would you have to change cprintf or its interface so that it would still be possible to pass it a variable number of arguments?
 
 Probably we can pass in another argument indicating the number of arguments, thus it is possible to find the memory address of `fmt`.
+
+#### Challenge: color print
+
+According to the [ANSI Codes](http://rrbrandt.dee.ufcg.edu.br/en/docs/ansi/), setting graphics mode follows the syntax `ESC[Ps1;Ps2;...PsNm]`, where
+
+**ESC**: ASCII escape character 27(dec)/033(oct)/1B(hex);
+**PsX**: text attributes and color codes;
+
+```c
+/* kern/init.c - i386_init() */
+/* 0 (all off), 1 (bold), 4 (underscore), 31 (red foreground), 43 (yellow background) */
+cprintf("Lab1-Ch: \033[1;4;31;43mHello colorful world! \033[0m\n");
+```
