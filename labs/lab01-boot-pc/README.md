@@ -342,3 +342,94 @@ f010002d:	ff e0                	jmp    *%ea
 ```
 
 ### Formatted printing to the console
+
+Three source files related to the formatted printing: *kern/printf.c*, *lib/printfmt.c*, *kern/console.c*.
+
+#### Exercise 8
+
+0. Finish the code for printing octal numbers using "%o" in the *lib/printfm.c*.
+
+With the following code, kernel starts with `6828 decimal is 015254 octal!` message because of `cprintf("6828 decimal is %o octal!\n", 6828);` in the `i386_init()`.
+
+```c
+// (unsigned) octal
+case 'o':
+  putch('0', putdat);
+  num = getuint(&ap, lflag);
+  base = 8;
+  goto number;
+```
+
+1. Explain the interface between *printf.c* and *console.c*. Specifically, what function does *console.c* export? How is this function used by *printf.c*?
+
+*printf.c* uses `cputchar()` from *console.c* to make `putch()` function. And `putch()` is passed into `vprintfmt()` in the *printfmt.c*.
+
+2.  Explain the following code from *console.c*.
+
+`crt_buf` is initialized to the display I/O memory in the `cga_init()`.
+
+```c
+// If screen is full, scroll down CRT_COLS characters
+if (crt_pos >= CRT_SIZE) {
+  int i;
+  // Push out CRT_COLS of data from the beginning of the display buffer
+  memmove(crt_buf, crt_buf + CRT_COLS, (CRT_SIZE - CRT_COLS) * sizeof(uint16_t));
+  // Erase the previous characters at the end
+  for (i = CRT_SIZE - CRT_COLS; i < CRT_SIZE; i++)
+    crt_buf[i] = 0x0700 | ' ';
+  // Move position back to the current end
+  crt_pos -= CRT_COLS;
+}
+```
+
+3. In the call to `cprintf()`, what does `fmt` and `ap` point to in the following code?
+
+`fmt` points to the formatted string. `ap` points to the argument list.
+
+```c
+int x = 1, y = 3, z = 4;
+cprintf("x %d, y %x, z %d\n", x, y, z);
+```
+
+4. What is the output of the following code on the little-endian x86 machine?
+
+`57616` in hex format is `e110`. On little-endian machine, `i` is stored as `0x72`, `0x6c`, `0x64`, `0x00`, which are `rld\0`.
+
+```c
+unsigned int i = 0x00646c72;
+cprintf("H%x Wo%s", 57616, &i);
+```
+
+5. What is going to be printed for `z` in the following code?
+
+Add the following to the `i386_init()` after the console initialization, build the kernel and start the GDB. From the *kernel.asm*, we know the arguments of `cprintf()` are pushed into stack from right to left, i.e. 0x04 -> 0x03 -> formatted string.
+
+```c
+/* kern/init.c - i386_init() */
+cprintf("x=%d y=%d z=%d", 3, 4);
+
+/* obj/kern/kernel.asm */
+f01000de:	c7 44 24 08 04 00 00 	movl   $0x4,0x8(%esp)
+f01000e5:	00 
+f01000e6:	c7 44 24 04 03 00 00 	movl   $0x3,0x4(%esp)
+f01000ed:	00 
+f01000ee:	c7 04 24 12 18 10 f0 	movl   $0xf0101812,(%esp)
+f01000f5:	e8 00 08 00 00       	call   f01008fa <cprintf>
+```
+
+Examining the argument list `ap`, `0x03` is at a lower address compared to `0x04` because stack grows downwards. The pop-out sequence is from the lower end, i.e. 0x03 -> 0x04 -> 0x00. Therefore, `z=0` will be print out. Note that the content is unknown, not always zero.
+
+```
+(gdb) si
+=> 0xf01008c7 <vcprintf>:	push   %ebp
+vcprintf (fmt=0xf0101812 "x=%d y=%d z=%d\n", ap=0xf0116fe4 "\003")
+
+(gdb) x/s 0xf0101812
+0xf0101812:	 "x=%d y=%d z=%d\n"
+(gdb) x/4w 0xf0116fe4
+0xf0116fe4:	0x00000003	0x00000004	0x00000000	0x00000000
+```
+
+6. Let's say that GCC changed its calling convention so that it pushed arguments on the stack in declaration order, so that the last argument is pushed last. How would you have to change cprintf or its interface so that it would still be possible to pass it a variable number of arguments?
+
+Probably we can pass in another argument indicating the number of arguments, thus it is possible to find the memory address of `fmt`.
