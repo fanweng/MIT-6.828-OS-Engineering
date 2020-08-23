@@ -402,7 +402,7 @@ cprintf("H%x Wo%s", 57616, &i);
 
 5. What is going to be printed for `z` in the following code?
 
-Add the following to the `i386_init()` after the console initialization, build the kernel and start the GDB. From the *kernel.asm*, we know the arguments of `cprintf()` are pushed into stack from right to left, i.e. 0x04 -> 0x03 -> formatted string.
+Add the following to the `i386_init()` after the console initialization, build the kernel and start the GDB. From the *kernel.asm*, we know the arguments of `cprintf()` are pushed onto stack from right to left, i.e. 0x04 -> 0x03 -> formatted string.
 
 ```c
 /* kern/init.c - i386_init() */
@@ -445,4 +445,82 @@ According to the [ANSI Codes](http://rrbrandt.dee.ufcg.edu.br/en/docs/ansi/), se
 /* kern/init.c - i386_init() */
 /* 0 (all off), 1 (bold), 4 (underscore), 31 (red foreground), 43 (yellow background) */
 cprintf("Lab1-Ch: \033[1;4;31;43mHello colorful world! \033[0m\n");
+```
+
+
+
+
+
+## The Stack
+
+### Stack pointer `esp`
+
+The x86 stack pointer points to the lowest memory address of the stack (top of the stack) that is currently in use. The growth of stack towards the lower address. In 32-bit mode, the stack holds 32-bit value, `esp` is always divisible by 4.
+
+- Push a value onto the stack
+Stack pointer decreases, write the value to the address that stack pointer currently pointing to, i.e. `*--esp=value`.
+
+- Pop a value from stack
+Read the value from the address that stack pointer pointing to, increase the stack pointer, i.e. `value=*esp++`.
+
+### Base pointer `ebp`
+
+Base pointer is used to reference all the function arguments and variables in the current stack frame. At the beginning of a subroutine, the previous function's base pointer is save by pushing `ebp` onto the stack, and then copies the current `esp` value into `ebp` during the current function execution. Thus, it's possible to trace back through the stack by following the chain of saved `ebp`, to determine the nested sequence of function calls
+
+### Instruction pointer `eip`
+
+Instruction pointer holds the address of the next CPU instruction to execute, and it's saved onto the stack as part of the `call` instruction.
+
+#### Exercise 9
+
+1. Determine where the kernel initializes its stack, and exactly where in memory its stack is located. How does the kernel reserve space for its stack? And at which "end" of this reserved area is the stack pointer initialized to point to?
+
+Stack is set at `movl $(bootstacktop),%esp` in the *kern/entry.S*. The kernel stack region is [bootstack, bootstacktop], i.e. [0xf0110000, 0xf011800]. It's reserved in the data segment by declaring the `bootstack` and `bootstacktop` in the *kern/entry.S*. The size is `KSTSIZE = 8*PAGESIZE = 32KB`. The initial value of `esp` is pointed at `bootstacktop`.
+
+```
+$ i386-jos-elf-objdump -D obj/kern/kernel | grep bootstack
+Disassembly of section .data:
+f0110000 <bootstack>:
+f0118000 <bootstacktop>:
+```
+
+#### Exercise 10
+
+1. Find the address of the test_backtrace function in obj/kern/kernel.asm, set a breakpoint there, and examine what happens each time it gets called after the kernel starts. How many 32-bit words does each recursive nesting level of `test_backtrace` push on the stack, and what are those words?
+
+`call f0100040 <test_backtrace>`: push the `eip` next instruction to the stack, 4 bytes.
+
+`push %ebp`: push current `ebp` base pointer to the stack, 4 bytes.
+
+`push %ebx`: push value on the `ebx` register to the stack, 4 bytes.
+
+`sub $0x14,%esp`: create 0x14 bytes space in the stack, 5 * 4 bytes.
+
+Therefore, each nested `test_backtrace()` has a stack frame of size 32 bytes.
+
+```
+/* obj/kern/kernel.asm */
+f0100040 <test_backtrace>:
+#include <kern/console.h>
+// Test the stack backtrace function (lab 1 only)
+void test_backtrace(int x) {
+f0100040:	55                   	push   %ebp
+f0100041:	89 e5                	mov    %esp,%ebp
+f0100043:	53                   	push   %ebx
+f0100044:	83 ec 14             	sub    $0x14,%esp
+f0100047:	8b 5d 08             	mov    0x8(%ebp),%ebx
+	cprintf("entering test_backtrace %d\n", x);
+... ...
+}
+
+f010009d <i386_init>:
+void i386_init(void) {
+... ...
+f010010d:	e8 2e ff ff ff       	call   f0100040 <test_backtrace>
+	// Drop into the kernel monitor.
+	while (1)
+		monitor(NULL);
+f0100112:	c7 04 24 00 00 00 00 	movl   $0x0,(%esp)
+... ...
+}
 ```
