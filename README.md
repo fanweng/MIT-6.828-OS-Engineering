@@ -8,7 +8,11 @@ I am attending the MIT 6.828 Operating System Engineering course online. This re
 
 ## Lectures
 
+[Lecture 1 - OS](./lectures/lec01-os-overview.md)
+
 ## Labs
+
+[Lab 1 - Booting a PC](./labs/lab01-boot-pc/README.md)
 
 ### Tools Guide
 
