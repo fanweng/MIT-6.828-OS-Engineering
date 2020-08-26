@@ -527,4 +527,76 @@ f0100112:	c7 04 24 00 00 00 00 	movl   $0x0,(%esp)
 
 #### Exercise 11
 
-1. Implement the backtrace function `mon_backtrace()` in the *kern/monitor.c*.
+1. Implement the backtrace function `mon_backtrace()` in the [kern/monitor.c](./kern/monitor.c).
+
+Set breakpoints at `f0100106` before calling the `test_backtrace()` for the first time and at the `f0100040 <test_backtrace>`.
+
+```
+/* obj/kern/kernel.asm */
+void i386_init(void) {
+ ... ...
+	test_backtrace(5);
+f0100106:	c7 04 24 05 00 00 00 	movl   $0x5,(%esp)
+f010010d:	e8 2e ff ff ff       	call   f0100040 <test_backtrace>
+	while (1)
+		monitor(NULL);
+f0100112:	c7 04 24 00 00 00 00 	movl   $0x0,(%esp)
+... ...
+}
+
+f0100040 <test_backtrace>:
+#include <kern/console.h>
+void test_backtrace(int x) {
+... ...
+f0100040:	55                   	push   %ebp
+f0100041:	89 e5                	mov    %esp,%ebp
+f0100043:	53                   	push   %ebx
+f0100044:	83 ec 14             	sub    $0x14,%esp
+f0100047:	8b 5d 08             	mov    0x8(%ebp),%ebx
+	cprintf("entering test_backtrace %d\n", x);
+f010004a:	89 5c 24 04          	mov    %ebx,0x4(%esp)
+f010004e:	c7 04 24 c0 17 10 f0 	movl   $0xf01017c0,(%esp)
+f0100055:	e8 c0 08 00 00       	call   f010091a <cprintf>
+	if (x > 0)
+f010005a:	85 db                	test   %ebx,%ebx
+f010005c:	7e 0d                	jle    f010006b <test_backtrace+0x2b>
+		test_backtrace(x-1);
+f010005e:	8d 43 ff             	lea    -0x1(%ebx),%eax
+f0100061:	89 04 24             	mov    %eax,(%esp)
+f0100064:	e8 d7 ff ff ff       	call   f0100040 <test_backtrace>
+f0100069:	eb 1c                	jmp    f0100087 <test_backtrace+0x47>
+	else
+		mon_backtrace(0, 0, 0);
+... ...
+```
+
+Run "continue" in the GDB for several times and stops at the third recursive call. Dump the stack content as below.
+
+`<0xf0117fdc+4>`: value 0x5 is the initial argument pushed to stack by `f0100106: movl $0x5,(%esp)` before calling `test_backtrace(5)`.
+
+`<0xf0117fdc+0>`: `eip` as the return address.
+
+`<0xf0117fdc-4>`: saved last `ebp` by `f0100040: push %ebp`.
+
+`<0xf0117fdc-8>`: saved `ebx` value by `f0100043:	push %ebx`.
+
+`<0xf0117fdc-12> to <0xf0117fdc-20>`: unknown data.
+
+`<0xf0117fdc-24>`: value 0x5 is the last `test_backtrace(5)` argument.
+
+`<0xf0117fcc+4>`: value 0x4 is the current argument before calling the first recursive `test_backtrace(5-1)`.
+
+Repeating from here...
+
+```
+(gdb) x/32wx $esp
+0xf0117f7c:	0xf0100069	0x00000002	0x00000003	0xf0117fb8
+0xf0117f8c:	0x00000000	0xf01008d4	0x00000004	0xf0117fb8
+0xf0117f9c:	0xf0100069	0x00000003	0x00000004	0x00000000
+0xf0117fac:	0x00000000	0x00000000	0x00000005	0xf0117fd8
+0xf0117fbc:	0xf0100069	0x00000004	0x00000005	0x00000000
+0xf0117fcc:	0x00010074	0x00010074	0x00010074	0xf0117ff8
+0xf0117fdc:	0xf0100112	0x00000005
+```
+
+Thus, it is possible to write the `mon_backtrace()` in the [kern/monitor.c](./kern/monitor.c)
