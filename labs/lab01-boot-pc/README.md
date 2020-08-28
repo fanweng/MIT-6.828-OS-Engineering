@@ -600,3 +600,11 @@ Repeating from here...
 ```
 
 Thus, it is possible to write the `mon_backtrace()` in the [kern/monitor.c](./kern/monitor.c)
+
+#### Exercise 12
+
+Finish the searching line number of the `debuginfo_eip()` in the [kern/kdebug.c](./kern/kdebug.c).
+
+Print out the file name, line number, symbol of the backtrace in the `mon_backtrace()` in the [kern/monitor.c](./kern/monitor.c). Note that we can use `printf("%.*s", length, string)` to print at most `length` characters of `string`. The `.` gives the precision which specifies the max number of bytes to be printed.
+
+Add "backtrace" as one of the `commands[]` in the [kern/monitor.c](./kern/monitor.c).
