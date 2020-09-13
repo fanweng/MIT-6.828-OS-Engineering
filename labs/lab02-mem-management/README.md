@@ -13,8 +13,8 @@ $ rm -rf .git/
 ```
 
 Lab 2 contains the following new source files:
-* `inc/memlayout.h`
-* `kern/pmap.c`
+* `inc/memlayout.h`: layout of the virtual address space.
+* `kern/pmap.c`: define the `PageInfo` structure.
 * `kern/pmap.h`
-* `kern/kclock.c`
+* `kern/kclock.c`: manipulate the PC's battery-backed clock and CMOS RAM hardware.
 * `kern/kclock.h`
