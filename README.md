@@ -14,9 +14,15 @@ I am attending the MIT 6.828 Operating System Engineering course online. This re
 
 [Lab 1 - Booting a PC](./labs/lab01-boot-pc/README.md)
 
+[Lab 2 - Memory Management](./labs/lab02-mem-management/README.md)
+
 ### Tools Guide
 
 [MIT 6.828 Lab Tools Guide](https://pdos.csail.mit.edu/6.828/2018/labguide.html)
+
+## Homeworks
+
+[HW 1 - Boot xv6](./homeworks/hw01-boot-xv6/README.md)
 
 ## Reading Materials
 
