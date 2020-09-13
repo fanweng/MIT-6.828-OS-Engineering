@@ -10,6 +10,10 @@ I am attending the MIT 6.828 Operating System Engineering course online. This re
 
 [Lecture 1 - OS](./lectures/lec01-os-overview.md)
 
+[Lecture 2 - x86 PC and Architecture](./lectures/lec02-x86-pc-arch.md)
+
+[Lecture 3 - C and GDB](./lectures/lec03-c-and-gdb.md)
+
 ## Labs
 
 [Lab 1 - Booting a PC](./labs/lab01-boot-pc/README.md)
@@ -23,6 +27,8 @@ I am attending the MIT 6.828 Operating System Engineering course online. This re
 ## Homeworks
 
 [HW 1 - Boot xv6](./homeworks/hw01-boot-xv6/README.md)
+
+[HW 2 - Shell](./homeworks/hw02-shell/README.md)
 
 ## Reading Materials
 
