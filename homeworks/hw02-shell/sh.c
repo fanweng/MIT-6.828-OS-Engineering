@@ -70,8 +70,8 @@ void runcmd(struct cmd *cmd)
         case '>':
         case '<':
             rcmd = (struct redircmd*)cmd;
-            close(rcmd->fd);
-            if (-1 == open(rcmd->file, rcmd->flags, 0777)) {
+            close(rcmd->fd);    // close the original file
+            if (-1 == open(rcmd->file, rcmd->flags, 0777)) {    // open with a new redirected file
                 fprintf(stderr, "open failed(%d): %s\n", errno, strerror(errno));
                 _exit(0);
             }
@@ -80,8 +80,30 @@ void runcmd(struct cmd *cmd)
 
         case '|':
             pcmd = (struct pipecmd*)cmd;
-            fprintf(stderr, "pipe not implemented\n");
-            // Your code here ...
+            if (-1 == pipe(p)) {    // create a pipe
+                fprintf(stderr, "pipe failed(%d): %s\n", errno, strerror(errno));
+                _exit(0);
+            }
+            if (0 == fork1()) {     // fork a process for left cmd
+                close(STDOUT_FILENO);       // close stdout
+                dup2(p[1], STDOUT_FILENO);  // redirect stdout to the write end of pipe
+                close(p[0]);
+                close(p[1]);
+                runcmd(pcmd->left);
+            }
+            if (0 == fork1()) {     // fork a process for right cmd
+                close(STDIN_FILENO);        // close stdin
+                dup2(p[0], STDIN_FILENO);   // redirect stdin to the read end of pipe
+                close(p[0]);
+                close(p[1]);
+                runcmd(pcmd->right);
+            }
+            close(p[0]);
+            close(p[1]);
+            
+            /* Wait for the two child processes */
+            wait(&r);
+            wait(&r);
             break;
     }    
 

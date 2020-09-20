@@ -41,10 +41,19 @@ README.md       a.out           sh.c            t.sh
 
 ### I/O redirection
 
-The parser already recognizes `>` and `<`, and builds a `redircmd`. I only need to open the file in the `runcmd()` accordingly.
+The parser already recognizes `>` and `<`, and builds a `redircmd`. I only need to open the file in the `runcmd()` accordingly using `open(const char *pathname, int flags, mode_t mode)`.
 
 ```sh
 6.828$ /bin/echo "6.828 is cool" > x.txt
 6.828$ /bin/cat < x.txt
 "6.828 is cool"
+```
+
+### Pipes
+
+The parser already recognizes `|`, and builds a `pipecmd`. I need to create a pipe using `pipe(int pipefd[2])`, fork child processes for left and right commands, redirect the STDOUT/STDIN accordingly by `dup2(int oldfd, int newfd)`, close the unused pipe ends and fds, and run commands. At the end, parent process needs to wait for the child processes using `wait(int *wstatus)`.
+
+```sh
+6.828$ /bin/ls | /usr/bin/sort | /usr/bin/uniq | /usr/bin/wc
+       4       4      26
 ```
