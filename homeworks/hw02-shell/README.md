@@ -38,3 +38,13 @@ execv failed(2): No such file or directory
 6.828$ /bin/ls
 README.md       a.out           sh.c            t.sh
 ```
+
+### I/O redirection
+
+The parser already recognizes `>` and `<`, and builds a `redircmd`. I only need to open the file in the `runcmd()` accordingly.
+
+```sh
+6.828$ /bin/echo "6.828 is cool" > x.txt
+6.828$ /bin/cat < x.txt
+"6.828 is cool"
+```
