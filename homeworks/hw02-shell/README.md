@@ -17,3 +17,24 @@ exec not implemented
 ```
 
 Read Chapter 0 of the [xv6 book](../../resources/xv6-book-rev11.pdf).
+
+## 1. Feature Implementation
+
+### `exec`
+
+Try a simple `ls` command in the built shell environment, error message will show up because `case ' '` in the `runcmd()` hasn't been implemented.
+
+```sh
+$ ./a.out 
+6.828$ ls
+exec not implemented
+```
+
+To accomplish that, `execv(const char *pathname, char *const argv[]))` is used and if it returns any error, we exit. Since this simple shell doesn't have a search `PATH` implemented, running `ls` will still encounter an error because shell cannot find the `ls` binary in the current working directory. Use an aboslute path `/bin/ls` to pass that.
+
+```sh
+6.828$ ls
+execv failed(2): No such file or directory
+6.828$ /bin/ls
+README.md       a.out           sh.c            t.sh
+```
