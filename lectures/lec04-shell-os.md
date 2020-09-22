@@ -1,24 +1,19 @@
 # Lecture 4: Shell & OS organization
 
-Lecture Topic:
-  kernel system call API
-    both details and design
-    isolation, multiplexing, and sharing
-  illustrate via shell and homework 2
+## I. Lecture Topic
 
-Overview Diagram
-  user / kernel
-  process = address space + thread(s)
-    process is a running program
-  app -> printf() -> write() -> SYSTEM CALL -> sys_write() -> ...
-  user-level libraries are app's private business
-  kernel internal functions are not callable by user
-  xv6 has a few dozen system calls; Linux a few hundred
-  details today are mostly about UNIX system-call API
-    basis for xv6, Linux, OSX, POSIX standard, &c
-    jos has very different system-calls; you'll build UNIX calls over jos
+Kernel system call API: both details and design; isolation, multiplexing, and sharing
 
-Homework solution
+## II. Overview Diagram
+
+* user / kernel
+* process = address space + thread(s)
+* process is a running program
+* app -> printf() -> write() -> SYSTEM CALL -> sys_write() -> ...
+* user-level libraries are app's private business
+* kernel internal functions are not callable by user
+
+## III. Homework 2 Solution
 
 * Let's review Homework 2 (sh.c)
   * exec
@@ -87,86 +82,73 @@ Let's look at the challenge problems
    ( echo a ; echo b ) > x
    what's the mechanism that avoids overwriting?
 
-UNIX system call observations
+## IV. UNIX System Call Observations
 
-* The fork/exec split looks wasteful -- fork() copies mem, exec() discards.
-  why not e.g. pid = forkexec(path, argv, fd0, fd1) ?
-  the fork/exec split is useful:
-    fork(); I/O redirection; exec()
-      or fork(); complex nested command; exit.
-      as in ( cmd1 ; cmd2 ) | cmd3
-    fork() alone: parallel processing
-    exec() alone: /bin/login ... exec("/bin/sh")
-  fork is cheap for small programs -- on my machine:
-    fork+exec takes 400 microseconds (2500 / second)
-    fork alone takes 80 microseconds (12000 / second)
-    some tricks are involved -- you'll implement them in jos!
+### `fork`/`exec` split
 
-* The file descriptor design:
-  * FDs are a level of indirection
+It looks that the `fork`/`exec` split is wasteful - `fork()` copies memory, `exec()` discards. Why not `pid = forkexec(path, argv, fd0, fd1)`?
+
+Actually the `fork`/`exec` split is useful:
+
+* the split allows more freedom on the operations: `fork()`; I/O redirection; `exec()` or `fork()`; complex nested command; exit. As in `(cmd1 ; cmd2 ) | cmd3`.
+    - `fork()` alone: parallel processing
+    - `exec()` alone: /bin/login ... exec("/bin/sh")
+
+* fork is cheap for small programs - on some machine:
+    - fork+exec takes 400 microseconds (2500 / second)
+    - fork alone takes 80 microseconds (12000 / second)
+    - some tricks are involved -- you'll implement them in jos!
+
+### File descriptor design
+
+* FDs are a level of indirection
     - a process's real I/O environment is hidden in the kernel
     - preserved over fork and exec
     - separates I/O setup from use
     - imagine writefile(filename, offset, buf size)
-  * FDs help make programs more general purpose: don't need special cases for
-    files vs console vs pipe
+  
+* FDs help make programs more general purpose: don't need special cases for files vs console vs pipe
 
-* Philosophy: small set of conceptually simple calls that combine well
-  e.g. fork(), open(), dup(), exec()
-  command-line design has a similar approach
-    ls | wc -l
+### Philosophy: small set of conceptually simple calls that combine well
 
-* Why must kernel support pipes -- why not have sh simulate them, e.g.
-  ls > tempfile ; wc -l < tempfile
+* E.g. fork(), open(), dup(), exec()
 
-* System call interface simple, just ints and char buffers.  why not have open()
-  return a pointer reference to a kernel file object?
+* command-line design has a similar approach: `ls | wc -l`
 
-* The core UNIX system calls are ancient; have they held up well?
-  yes; very successful
-    and evolved well over many years
-  history: design caters to command-line and s/w development
-    system call interface is easy for programmers to use
-    command-line users like named files, pipelines, &c
-    important for development, debugging, server maintenance
-  but the UNIX ideas are not perfect:
-    programmer convenience is often not very valuable for system-call API
-      programmers use libraries e.g. Python that hide sys call details
-      apps may have little to do with files &c, e.g. on smartphone
-    some UNIX abstractions aren't very efficient
-      fork() for multi-GB process is very slow
-      FDs hide specifics that may be important
-        e.g. block size for on-disk files
-        e.g. timing and size of network messages
-  so there has been lots of work on alternate plans
-    sometimes new system calls and abstractions for existing UNIX-like kernels
-    sometimes entirely new approaches to what a kernel should do
-  ask "why this way? wouldn't design X be better?"
+### Why system call designed like this?
 
-OS organization
+The core UNIX system calls are ancient; have they held up well? Yes, very successful and evolved well over many years history: design caters to command-line and s/w development system call interface is easy for programmers to use command-line users like named files, pipelines, &c important for development, debugging, server maintenance but the UNIX ideas are not perfect: programmer convenience is often not very valuable for system-call API programmers use libraries e.g. Python that hide syscall details apps may have little to do with files &c, e.g. on smartphone some UNIX abstractions aren't very efficient fork() for multi-GB process is very slow FDs hide specifics that may be important:
 
-* main goal: isolation
+* e.g. block size for on-disk files
+* e.g. timing and size of network messages
 
-  * Processors provide user/kernel mode
-     kernel mode: can execute "privileged" instructions
-       e.g., setting kernel/user bit
-     user mode: cannot execute privileged instructions
+## V. OS organization
 
-  * Operating system runs in kernel mode
-    - kernel is "trusted"
-      can set user/kernel bit
-      direct hardware access
+### Main goal: isolation
+
+#### Processors provide user/kernel mode
+
+* kernel mode: can execute "privileged" instructions
+    - e.g., setting kernel/user bit
+* user mode: cannot execute privileged instructions
+
+#### Operating system runs in kernel mode
+
+* kernel is "trusted"
+    - can set user/kernel bit
+    - direct hardware access
 	  
-  * Applications run in user mode
-    - kernel sets up per-process isolated address space
-    - system calls switch between user and kernel mode
-      the application executes a special instruction to enter kernel
-      hardware switches to kernel mode
-      but only at an entry point specified by the kernel
+#### Applications run in user mode
 
-* What to put in the kernel?
+* kernel sets up per-process isolated address space
+* system calls switch between user and kernel mode:
+    - the application executes a special instruction to enter kernel
+    - hardware switches to kernel mode
+    - but only at an entry point specified by the kernel
 
-  * xv6 follows a traditional design: all of the OS runs in kernel mode
+#### What to put in the kernel?
+
+* xv6 follows a traditional design: all of the OS runs in kernel mode
     - one big program with file system, drivers, &c
     - this design is called a monolithic kernel
     - kernel interface == system call interface
@@ -176,24 +158,23 @@ OS organization
       leads to bugs
       no isolation within kernel
 
-  * microkernel design
+* microkernel design
     - many OS services run as ordinary user programs
-      file system in a file server
+        + file system in a file server
     - kernel implements minimal mechanism to run services in user space
-      processes with memory
-      inter-process communication (IPC)
+        + processes with memory
+        + inter-process communication (IPC)
     - kernel interface != system call interface		
     - good: more isolation
     - bad: may be hard to get good performance
 
-  * exokernel: no abstractions
-    apps can use hardware semi-directly, but O/S isolates
-    e.g. app can read/write own page table, but O/S audits
-    e.g. app can read/write disk blocks, but O/S tracks block owners
-    good: more flexibility for demanding applications
-    jos will be a mix of microkernel and exokernel
+* exokernel: no abstractions
+    - apps can use hardware semi-directly, but O/S isolates
+        + e.g. app can read/write own page table, but O/S audits
+        + e.g. app can read/write disk blocks, but O/S tracks block owners
+    - good: more flexibility for demanding applications
+    - jos will be a mix of microkernel and exokernel
 
 * Can one have process isolation WITHOUT h/w-supported kernel/user mode?
-  yes!
-  see Singularity O/S, later in semester
-  but h/w user/kernel mode is the most popular plan
+    - yes! see Singularity O/S, later in semester
+    - but h/w user/kernel mode is the most popular plan
