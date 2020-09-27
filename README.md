@@ -14,6 +14,8 @@ I am attending the MIT 6.828 Operating System Engineering course online. This re
 
 [Lecture 3 - C and GDB](./lectures/lec03-c-and-gdb.md)
 
+[Lecture 4 - Shell & OS Organization](./lectures/lec04-shell-os.md)
+
 ## Labs
 
 [Lab 1 - Booting a PC](./labs/lab01-boot-pc/README.md)
