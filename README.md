@@ -16,6 +16,8 @@ I am attending the MIT 6.828 Operating System Engineering course online. This re
 
 [Lecture 4 - Shell & OS Organization](./lectures/lec04-shell-os.md)
 
+[Lecture 5 - Isolation Mechanisms](./lectures/lec05-iso-mechanisms.md)
+
 ## Labs
 
 [Lab 1 - Booting a PC](./labs/lab01-boot-pc/README.md)
