@@ -33,4 +33,15 @@ In the *syscall.h*, number 22 is reserved for `SYS_date`.
 
 The implementation of ystem calls are defined in the *sysproc.c* and *sysfile.c*. The `sys_date` is not file-related so its definition should be put in the *sysproc.c*. Use `argptr()` from *syscall.c* to fetch the argument as a pointer, and call `cmostime()` from *lapic.c* to get the current time.
 
-At last, add `date` to the *user.h* and *usys.S* as an interface so that user can call it.
+At last, add `date()` to the *user.h* and *usys.S* as an interface so that user can call it.
+
+#### Test
+
+Create a user-level program *date.c* that calls the `date()` system call. In order to make the `date` program available to run from the xv6 shell, add `_date` to the `UPROGS` definition in the *Makefile*.
+
+```sh
+$ make qemu-nox
+xv6...
+$ date
+2020-9-29 1:12:0
+``
