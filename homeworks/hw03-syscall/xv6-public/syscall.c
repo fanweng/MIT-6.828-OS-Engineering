@@ -137,6 +137,24 @@ syscall(void)
   num = curproc->tf->eax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     curproc->tf->eax = syscalls[num]();
+
+    // switch (num) {
+    //   case 1:
+    //     cprintf("fork -> %d\n", curproc->tf->eax);
+    //     break;
+    //   case 7:
+    //     cprintf("exec -> %d\n", curproc->tf->eax);
+    //     break;
+    //   case 15:
+    //     cprintf("open -> %d\n", curproc->tf->eax);
+    //     break;
+    //   case 16:
+    //     cprintf("write -> %d\n", curproc->tf->eax);
+    //     break;
+    //   case 21:
+    //     cprintf("close -> %d\n", curproc->tf->eax);
+    //     break;
+    // }
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             curproc->pid, curproc->name, num);
