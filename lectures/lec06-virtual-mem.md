@@ -52,95 +52,46 @@ In RAM - MMU loads (and stores) PTEs. OS can read/write PTEs.
 
 `%cr3` holds physical address of PD. PD holds physical address of PTE pages. They can be anywhere in RAM - need not be contiguous.
 
-* how does x86 paging hardware translate a va?
-  need to find the right PTE
-  %cr3 points to PA of PD
-  top 10 bits index PD to get PA of PT
-  next 10 bits index PT to get PTE
-  PPN from PTE + low-12 from VA
+#### How does x86 paging hardware translate a virtual address?
 
-* what if P bit not set? or store and W bit not set?
-  "page fault"
-  CPU saves registers, forces transfer to kernel
-  trap.c in xv6 source
-  kernel can just produce error, kill process
-  or kernel can install a PTE, resume the process
-    e.g. after loading the page of memory from disk
+To find the correct physical address it to find the correct PTE:
 
-* Q: why mapping rather than e.g. base/bound?
-  indirection allows paging h/w to solve many problems
-  e.g. avoids fragmentation
-  e.g. copy-on-write fork
-  e.g. lazy allocation (home work for next lecture)
-  many more techniques
-  topic of next lecture
-  
-* Q: why use virtual memory in kernel?
-  it is clearly good to have page tables for user processes
-  but why have a page table for the kernel?
-    could the kernel run with using only physical addresses?
-  top-level answer: yes
-    Singularity is an example kernel using phys addresses
-	but, most standard kernels do use virtual addresses?
-  why do standard kernels do so?
-    some reasons are lame, some are better, none are fundamental
-    - the hardware makes it difficult to turn it off
-	  e.g. on entering a system call, one would have to disable VM
-	- it can be convenient for the kernel to use user addresses
-	  e.g. a user address passed to a system call
-	  but, probably a bad idea: poor isolation between kernel/application
-	- convenient if addresses are contiguous
-	  say kernel has both 4Kbyte objects and 64Kbyte objects
-      without page tables, we can easily have memory fragmentation
-	  e.g., allocate 64K, allocate 4Kbyte, free the 64K, allocate 4Kbyte from the 64Kbyte
-	  now a new 64Kbyte object cannot use the free 60Kbyte.
-	- the kernel must run of a wide range of hardware
-	  they may have different physical memory layouts
+* `%cr3` points to physical address of PD
+* top 10 bits of virtual address index PD to get the physical address of PT
+* next 10 bits of virtual address index PT to get the PTE
+* PPN from PTE + lower 12 bits from virtual address = Physical Address
 
-## Case study: xv6 use of the x86 paging hardware
+#### How page fault is handled?
 
-* big picture of an xv6 address space -- one per process
-  [diagram]
+CPU saves registers, forces transfer to kernel, i.e. *trap.c* in xv6 source. Kernel can just produce error, kill process or kernel can install a PTE, resume the process, e.g. after loading the page of memory from disk.
+
+#### What are the benefits of memory mapping?
+
+The indirection allows paging h/w to solve many problems:
+
+* avoids fragmentation
+* copy-on-write fork
+* lazy allocation (home work for next lecture)
+* and more...
+
+## II. Case study: xv6 use of the x86 paging hardware
+
+* Big picture of an xv6 address space -- one per process
+```
   0x00000000:0x80000000 -- user addresses below KERNBASE
   0x80000000:0x80100000 -- map low 1MB devices (for kernel)
   0x80100000:?          -- kernel instructions/data
   ?         :0x8E000000 -- 224 MB of DRAM mapped here
   0xFE000000:0x00000000 -- more memory-mapped devices
-  
-* where does xv6 map these regions, in phys mem?
-<!--
- diagram from book: xv6-layout.eps
--->
-  note double-mapping of user pages
+```
 
-* each process has its own address space
-  and its own page table
-  all processes have the same kernel (high memory) mappings
-  kernel switches page tables (i.e. sets %cr3) when switching processes
+* Each process has its own address space and its own page table
 
-* Q: why this address space arrangement?
-  user virtual addresses start at zero
-    of course user va 0 maps to different pa for each process
-  2GB for user heap to grow contiguously
-    but needn't have contiguous phys mem -- no fragmentation problem
-  both kernel and user mapped -- easy to switch for syscall, interrupt
-  kernel mapped at same place for all processes
-    eases switching between processes
-  easy for kernel to r/w user memory
-    using user addresses, e.g. sys call arguments
-  easy for kernel to r/w physical memory
-    pa x mapped at va x+0x80000000
-    we'll see this soon while manipulating page tables
+* All processes have the same kernel (high memory) mappings. Kernel switches page tables (i.e. sets `%cr3`) when switching processes
 
-* Q: what's the largest process this scheme can accommodate?
+### xv6 virtual memory code
 
-* Q: could we increase that by increasing/decreasing 0x80000000?
-
-* Q: does the kernel have to map all of phys mem into its virtual address space?
-
-* let's look at some xv6 virtual memory code
-  terminology: virtual memory == address space / translation
-  will help you w. next homework and labs
+Terminology: virtual memory = address space / translation
 
 <!---
 
