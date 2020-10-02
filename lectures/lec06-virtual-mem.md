@@ -197,14 +197,11 @@ date
   argptr
 -->
 
+#### `sbrk()`
 
-* a process calls sbrk(n) to ask for n more bytes of heap memory
-  malloc() uses sbrk()
-  each process has a size
-    kernel adds new memory at process's end, increases size
-  sbrk() allocates physical memory (RAM)
-  maps it into the process's page table
-  returns the starting address of the new memory
+A process calls `sbrk(n)` to ask for `n` more bytes of heap memory. `sbrk()` allocates physical memory (RAM), maps it into the process's page table, and returns the starting address of the new memory. Kernel adds new memory at process's end, increasing the process size.
+
+`malloc()` uses `sbrk()`.
 
 * sys_sbrk() in sysproc.c
 <!---
