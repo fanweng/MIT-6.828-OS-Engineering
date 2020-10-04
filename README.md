@@ -18,6 +18,8 @@ I am attending the MIT 6.828 Operating System Engineering course online. This re
 
 [Lecture 5 - Isolation Mechanisms](./lectures/lec05-iso-mechanisms.md)
 
+[Lecture 6 - Virtual Memory](./lectures/lec06-virtual-mem.md)
+
 ## Labs
 
 [Lab 1 - Booting a PC](./labs/lab01-boot-pc/README.md)

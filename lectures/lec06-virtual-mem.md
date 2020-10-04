@@ -93,131 +93,32 @@ The indirection allows paging h/w to solve many problems:
 
 Terminology: virtual memory = address space / translation
 
-<!---
+#### Where does the `pgdir` get setup?
+  
+In the *vm.c*, `setupkvm()` sets up the kernel part of a page table. `inituvm()` loads the init code into address 0 of `pgdir`.
 
-start where Robert left off: first process
+#### How does `mappages()` work in *vm.c*?
 
-setup: CPUS=1, turn-off interrupts in lapic.c
-b proc.c:297
+It creates PTEs for virtual addresses starting at `va` that refer to physical addresses starting at `pa`. `va` and `size` may not be page-aligned. It rounds such non-page-aligned addresses for each page-aligned address in the range, in which `walkpgdir()` is called to find the address of PTE, put the `pa` into the PTE, mark the PTE as valid with `PTE_P`.
 
-p *p
-Q: are these addresses virtual addresses
+```c
+static int mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
+```
 
-break into qemu: info pg (modified 6.828 qemu)
+#### How does `walkpgdir()` work in *vm.c*?
 
-step into switchuvm
+It mimics how the paging hardware finds the PTE for an address. `&pgdir[PDX(va)]` returns the address of the PDE by the top 10 bits of `va`.
 
-x/1024x p->pgdir
-what is 0x0dfbc007?  (pde; see handout)
-what is 0x0dfbc000?
-what is 0x0dfbc000 + 0x8000000
-what is there? (pte)
-what is at 0x8dfbd000?
-x x/i 0x8dfbd000 (first word of initcode.asm)
+If the PDE is valid with PTE_P, the relevant page-table page already exists. `PTE_ADDR()` extracts the PPN from the PDE and `P2V()` adds 0x80000000, since PTE holds physical address.
 
-step passed lcr3
+If not PTE_P, it allocates a page, filling in the PDE with PPN by `V2P()`. Now the PTE we want is in the page-table page at offset `PTX(va)`, which is 2nd 10 bits of `va`.
 
-qemu: info pg
-
--->
-
-* where did this pgdir get setup?
-  look at vm.c: setupkvm and inituvm
-
-* mappages() in vm.c
-  arguments are PD, va, size, pa, perm
-  adds mappings from a range of va's to corresponding pa's
-  rounds b/c some uses pass in non-page-aligned addresses
-  for each page-aligned address in the range
-    call walkpgdir to find address of PTE
-      need the PTE's address (not just content) b/c we want to modify
-    put the desired pa into the PTE
-    mark PTE as valid w/ PTE_P
-
-* diagram of PD &c, as following steps build it
-
-* walkpgdir() in vm.c
-  mimics how the paging h/w finds the PTE for an address
-  refer to the handout
-  PDX extracts top ten bits
-  &pgdir[PDX(va)] is the address of the relevant PDE
-  now *pde is the PDE
-  if PTE_P
-    the relevant page-table page already exists
-    PTE_ADDR extracts the PPN from the PDE
-    p2v() adds 0x80000000, since PTE holds physical address
-  if not PTE_P
-    alloc a page-table page
-    fill in PDE with PPN -- thus v2p
-  now the PTE we want is in the page-table page
-    at offset PTX(va)
-    which is 2nd 10 bits of va
-
-
-<!--
-
-finish starting the first user process
-
-return to gdb
-
-(draw picture of kstack)
-p /x p->tf
-p /x *p->tf
-p /x p->context
-p /x p->context
-
-b *0x0
-
-swtch
-x/8x $esp
-forkret
-x/19x $esp
-info reg
-
-step till user space:
-x/i 0x0
-
-step through use code
-trap into kernel
-
-x/19x $esp
-
--->
-
-* tracing and date system call
-
-<!-- homework
-syscall trace 
-  syscall.c (HWSYS)
-  return value in eax
-  use STAB for printing out names
-date
-  usys.S
-  syscall.c (HWDATE)
-  argptr
--->
-
-#### `sbrk()`
+#### `sbrk()` system call
 
 A process calls `sbrk(n)` to ask for `n` more bytes of heap memory. `sbrk()` allocates physical memory (RAM), maps it into the process's page table, and returns the starting address of the new memory. Kernel adds new memory at process's end, increasing the process size.
 
 `malloc()` uses `sbrk()`.
 
-* sys_sbrk() in sysproc.c
-<!---
-   trace sbrk from user space
-   just run ls (or any other cmd from shell)
-   the new process forked by shell calls malloc for execcmd structure
-   malloc.c calls sbrk
--->
+#### `growproc()` in proc.c
 
-* growproc() in proc.c
-  proc->sz is the process's current size
-  allocuvm() does most of the work
-  switchuvm sets %cr3 with new page table
-    also flushes some MMU caches so it will see new PTEs
-
-* allocuvm() in vm.c
-  why if(newsz >= KERNBASE) ?
-  why PGROUNDUP?
-  arguments to mappages()...
+It grows the current process's memory by the input size. `allocuvm()` from the *vm.c* does most of the work. Then `switchuvm()` from *vm.c* sets `%cr3` with new page table, also flushes some MMU caches so it will see new PTEs.
