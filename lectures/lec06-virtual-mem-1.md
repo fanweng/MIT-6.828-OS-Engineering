@@ -1,10 +1,10 @@
-# Lecture 6: Virtual Memory
+# Lecture 6: Virtual Memory (1)
 
 * address spaces
 * paging hardware
 * xv6 VM code
 
-Lecture PDF version is [HERE](../resources/virtual-memory.pdf). 
+PDF slides for the lecture is [HERE](../resources/virtual-memory-1.pdf). 
 
 ## I. Virtual memory overview
 
