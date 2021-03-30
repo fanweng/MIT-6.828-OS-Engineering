@@ -38,6 +38,18 @@ I am attending the MIT 6.828 Operating System Engineering course online. This re
 
 [HW 2 - Shell](./homeworks/hw02-shell/README.md)
 
+[HW 3 - System Calls](./homeworks/hw03-syscall/README.md)
+
 ## Reading Materials
 
 [MIT 6.828 Reference Page](https://pdos.csail.mit.edu/6.828/2018/reference.html)
+
+[Using GNU Debugger](./resources/using-gnu-gdb.pdf)
+
+[xv6 OS Introduction Rev.11](./resources/xv6-book-rev11.pdf)
+
+[xv6 Source Code Rev.11](./resources/xv6-source-rev11.pdf)
+
+[ELF Specification Ver1.2](./resources/elf-spec.pdf)
+
+[PC Assembly Language](./resources/pc-asm-book.pdf)
