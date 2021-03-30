@@ -12,6 +12,8 @@ If having a non-Athena machine, we need to install **QEMU** (an x86 emulator for
 
 ### QEMU
 
+#### MacOS
+
 1. Install developer tools on MacOS:
 `$ xcode-select --install`
 
@@ -28,7 +30,21 @@ If having a non-Athena machine, we need to install **QEMU** (an x86 emulator for
     - Install the QEMU binary. The gettext utility doesn't add installed binaries to the PATH, so we need to run:
     `$ PATH=${PATH}:/usr/local/opt/gettext/bin make install`
 
+#### Linux
+
+```sh
+$ git clone https://github.com/mit-pdos/6.828-qemu.git qemu
+$ sudo apt-get install libsdl1.2-dev libtool-bin libglib2.0-dev libz-dev libpixman-1-dev
+
+$ cd qemu
+$ ./configure --disable-kvm --disable-werror --target-list="i386-softmmu x86_64-softmmu"
+$ make
+$ sudo make install
+```
+
 ### GCC
+
+#### MacOS
 
 We can choose to install the i386-jos-elf-* toolchain from the Homebrew otherwise kernel cannot be built.
 ```sh
@@ -38,9 +54,16 @@ $ brew install i386-jos-elf-gcc i386-jos-elf-gdb
 
 Or, we can build our own compiler toolchain by following the [tool page](https://pdos.csail.mit.edu/6.828/2018/tools.html).
 
+#### Linux
 
-
-
+```sh
+$ sudo apt-get install -y build-essential gdb
+$ sudo apt-get install gcc-multilib
+$ objdump -i
+(something elf32-i386 in the second line)
+$ gcc -m32 -print-libgcc-file-name
+(something like /usr/lib/gcc/i486-linux-gnu/version/libgcc.a or /usr/lib/gcc/x86_64-linux-gnu/version/32/libgcc.a)
+```
 
 ## 1. PC Bootstrap
 
@@ -81,6 +104,8 @@ Special kernel symbols:
   end    f0119940 (virt)  00119940 (phys)
 Kernel executable memory footprint: 103KB
 ```
+
+To exit QEMU, use `Ctrl-A X`.
 
 ### PC's Address Space
 
